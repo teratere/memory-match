@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>神経衰弱 | Apps Hub</title>
+
+  <!-- Tailwind CSS & FontAwesome -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Google Fonts: Playfair Display + JetBrains Mono + Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Noto+Sans+JP:wght@400;500;700&family=Playfair+Display:wght@700;900&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '"Noto Sans JP"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+            serif: ['"Playfair Display"', 'Georgia', 'serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    /* 確実に表示されるフリップ＆カード構造 */
+    .card-wrap {
+      perspective: 1000px;
+      touch-action: manipulation;
+    }
+    .card-box {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+      transform-style: preserve-3d;
+      border-radius: 0.65rem;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .card-box.is-flipped {
+      transform: rotateY(180deg);
+    }
+
+    /* カード両面（環境依存のない直接指定） */
+    .card-face-back,
+    .card-face-front {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 0.65rem;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      overflow: hidden;
+    }
+
+    .card-face-back {
+      z-index: 2;
+      transform: rotateY(0deg);
+    }
+
+    .card-face-front {
+      z-index: 1;
+      transform: rotateY(180deg);
+      background-color: #ffffff;
+    }
+    .dark .card-face-front {
+      background-color: #0f172a;
+    }
+
+    /* 裏面カジノパターン（青格子） */
+    .card-back-pattern {
+      background-color: #1e3a8a;
+      background-image: 
+        repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.12) 0, rgba(255, 255, 255, 0.12) 1.5px, transparent 1.5px, transparent 8px),
+        repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.12) 0, rgba(255, 255, 255, 0.12) 1.5px, transparent 1.5px, transparent 8px);
+      background-size: 11px 11px;
+    }
+    .dark .card-back-pattern {
+      background-color: #172554;
+      background-image: 
+        repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.15) 0, rgba(255, 255, 255, 0.15) 1.5px, transparent 1.5px, transparent 8px),
+        repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.15) 0, rgba(255, 255, 255, 0.15) 1.5px, transparent 1.5px, transparent 8px);
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between transition-colors duration-200">
+
+  <!-- ================= 統一ヘッダー規格 ================= -->
+  <header class="w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200/80 dark:border-slate-800 sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
+      
+      <!-- Apps Hub 統一戻りリンク -->
+      <a href="../" class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors py-1.5 px-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+        <i class="fa-solid fa-arrow-left text-[11px]"></i>
+        <span>Apps Hub</span>
+      </a>
+
+      <!-- タイトル -->
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-xs">
+          <i class="fa-solid fa-clone"></i>
+        </div>
+        <h1 class="text-sm font-extrabold tracking-tight text-slate-800 dark:text-slate-100">神経衰弱</h1>
+      </div>
+
+      <!-- 右端ツール：サウンド & 外観切替 -->
+      <div class="flex items-center gap-1.5">
+        <button id="sound-toggle" onclick="toggleSound()" class="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-300 flex items-center justify-center text-xs hover:bg-slate-100 dark:hover:bg-slate-700 transition" title="サウンド切替">
+          <i id="sound-icon" class="fa-solid fa-volume-high"></i>
+        </button>
+        <button id="theme-toggle" onclick="toggleTheme()" class="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-300 flex items-center justify-center text-xs hover:bg-slate-100 dark:hover:bg-slate-700 transition" title="外観切替">
+          <i id="theme-icon" class="fa-solid fa-moon"></i>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ================= メインコンテンツ ================= -->
+  <main class="flex-1 max-w-4xl w-full mx-auto p-3 sm:p-6 flex flex-col gap-3 sm:gap-4">
+    
+    <!-- コントロールバー -->
+    <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xs flex flex-wrap items-center justify-between gap-2.5">
+      
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- モード選択 -->
+        <div class="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-xs font-semibold">
+          <button id="mode-solo" onclick="setMode('solo')" class="px-2.5 py-1 rounded-lg transition bg-white dark:bg-slate-700 shadow-xs text-indigo-600 dark:text-indigo-400">1人</button>
+          <button id="mode-cpu" onclick="setMode('cpu')" class="px-2.5 py-1 rounded-lg transition text-slate-500 dark:text-slate-400">vs CPU</button>
+          <button id="mode-pvp" onclick="setMode('pvp')" class="px-2.5 py-1 rounded-lg transition text-slate-500 dark:text-slate-400">2人対戦</button>
+        </div>
+
+        <!-- 枚数選択 -->
+        <div class="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-xs font-semibold">
+          <button id="cards-12" onclick="setCardCount(12)" class="px-2.5 py-1 rounded-lg transition bg-white dark:bg-slate-700 shadow-xs text-indigo-600 dark:text-indigo-400">12枚</button>
+          <button id="cards-24" onclick="setCardCount(24)" class="px-2.5 py-1 rounded-lg transition text-slate-500 dark:text-slate-400">24枚</button>
+          <button id="cards-36" onclick="setCardCount(36)" class="px-2.5 py-1 rounded-lg transition text-slate-500 dark:text-slate-400">36枚</button>
+          <button id="cards-52" onclick="setCardCount(52)" class="px-2.5 py-1 rounded-lg transition text-slate-500 dark:text-slate-400">52枚</button>
+        </div>
+
+        <!-- CPUレベル -->
+        <div id="cpu-level-container" class="hidden inline-flex items-center gap-1.5">
+          <span class="text-[11px] text-slate-400">AI:</span>
+          <select id="cpu-difficulty" onchange="onCpuLevelChange()" class="text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2 py-1 outline-none">
+            <option value="easy">初級 (うろ覚え)</option>
+            <option value="normal" selected>中級 (記憶型)</option>
+            <option value="hard">上級 (完全記憶)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- リセットボタン -->
+      <button onclick="initGame()" class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 rounded-xl transition border border-indigo-200/60 dark:border-indigo-800/60 ml-auto">
+        <i class="fa-solid fa-rotate-right text-[11px]"></i>
+        <span>やり直す</span>
+      </button>
+
+    </div>
+
+    <!-- 計器ボード（JetBrains Mono） -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+      
+      <!-- ステータス -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-2.5 sm:p-3 flex items-center gap-3">
+        <div id="turn-badge-icon" class="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-sm shrink-0">
+          <i class="fa-solid fa-user"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">TURN / STATUS</div>
+          <div id="turn-status-text" class="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-100 truncate">あなたの番</div>
+        </div>
+      </div>
+
+      <!-- 時間 & 手数 -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-2.5 sm:p-3 flex items-center gap-3 font-mono">
+        <div class="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-sm shrink-0 font-sans">
+          <i class="fa-regular fa-clock"></i>
+        </div>
+        <div>
+          <div class="text-[10px] text-slate-400 font-bold uppercase font-sans tracking-wider">TIME / MOVES</div>
+          <div class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
+            <span id="stat-time">00:00</span>
+            <span class="text-[11px] text-slate-400 ml-1">(<span id="stat-moves">0</span>手)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ペア獲得数 -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-2.5 sm:p-3 flex items-center gap-3 font-mono">
+        <div class="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center text-sm shrink-0 font-sans">
+          <i class="fa-solid fa-trophy"></i>
+        </div>
+        <div>
+          <div class="text-[10px] text-slate-400 font-bold uppercase font-sans tracking-wider">PAIRS</div>
+          <div id="score-display" class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100">
+            0 / 6
+          </div>
+        </div>
+      </div>
+
+      <!-- ベスト記録 -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-2.5 sm:p-3 flex items-center gap-3 font-mono">
+        <div class="w-8 h-8 rounded-xl bg-violet-50 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 flex items-center justify-center text-sm shrink-0 font-sans">
+          <i class="fa-solid fa-medal"></i>
+        </div>
+        <div class="truncate">
+          <div class="text-[10px] text-slate-400 font-bold uppercase font-sans tracking-wider">BEST SOLO</div>
+          <div id="stat-best" class="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
+            --
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ゲーム盤面エリア -->
+    <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-3 sm:p-6 shadow-xs flex-1 flex flex-col justify-center min-h-[400px]">
+      <div id="card-grid" class="grid gap-2 sm:gap-3.5 mx-auto w-full max-w-3xl">
+        <!-- 動的カード要素 -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ================= 統一フッター（正式ミニ免責文） ================= -->
+  <footer class="mt-8 py-6 text-center border-t border-slate-200/80 dark:border-slate-800">
+    <div class="max-w-4xl mx-auto px-4">
+      <p class="text-[11px] text-slate-400 dark:text-slate-500">
+        ※個人開発プロトタイプにつき無保証・自己責任にてご利用ください（データは端末内完結・サポート対象外）
+      </p>
+    </div>
+  </footer>
+
+  <!-- ================= クリアモーダル ================= -->
+  <div id="game-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full text-center shadow-xl space-y-4">
+      <div id="modal-icon-wrap" class="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center text-3xl mx-auto">
+        <i class="fa-solid fa-crown"></i>
+      </div>
+      <div>
+        <h2 id="modal-title" class="text-xl font-extrabold text-slate-800 dark:text-slate-100">クリア！</h2>
+        <p id="modal-desc" class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">全カードの一致に成功しました。</p>
+      </div>
+
+      <div class="bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 font-mono text-xs space-y-2">
+        <div class="flex justify-between">
+          <span class="text-slate-400 font-sans">クリアタイム:</span>
+          <span id="modal-time" class="font-bold text-slate-800 dark:text-slate-100">00:00</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400 font-sans">かかった手数:</span>
+          <span id="modal-moves" class="font-bold text-slate-800 dark:text-slate-100">0手</span>
+        </div>
+        <div id="modal-extra" class="pt-1 border-t border-slate-200 dark:border-slate-700/60 flex justify-between text-indigo-600 dark:text-indigo-400 font-sans font-bold">
+          <span>スコア結果:</span>
+          <span id="modal-result-detail">--</span>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeModal()" class="flex-1 py-2.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+          閉じる
+        </button>
+        <button onclick="closeModal(); initGame();" class="flex-1 py-2.5 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition">
+          もう一度遊ぶ
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= スクリプト ================= -->
+  <script>
+    // 伝統的な4スート定義 (スペード, ハート, クラブ, ダイヤ)
+    const SUITS = [
+      { name: 'spades', symbol: '♠', label: 'Spade', color: '#1e293b', isRed: false },
+      { name: 'hearts', symbol: '♥', label: 'Heart', color: '#dc2626', isRed: true },
+      { name: 'clubs', symbol: '♣', label: 'Club', color: '#1e293b', isRed: false },
+      { name: 'diamonds', symbol: '♦', label: 'Diamond', color: '#dc2626', isRed: true }
+    ];
+
+    const RANK_LABELS = { 1: 'A', 11: 'J', 12: 'Q', 13: 'K' };
+
+    let gameState = {
+      mode: 'solo',
+      totalCards: 12,
+      cards: [],
+      flippedIndices: [],
+      matchedPairs: 0,
+      moves: 0,
+      isLocked: false,
+      timerSec: 0,
+      timerId: null,
+      turn: 'p1',
+      scores: { p1: 0, p2: 0 },
+      cpuMemory: {},
+      cpuDifficulty: 'normal',
+      isSoundEnabled: true
+    };
+
+    // --- Web Audio API（シンセ効果音） ---
+    let audioCtx = null;
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
+
+    function playSound(type) {
+      if (!gameState.isSoundEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        const now = ctx.currentTime;
+
+        if (type === 'flip') {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(320, now);
+          osc.frequency.exponentialRampToValueAtTime(750, now + 0.04);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.055);
+        } else if (type === 'match') {
+          [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+            gain.gain.setValueAtTime(0.14, now + idx * 0.06);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.28);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + idx * 0.06);
+            osc.stop(now + idx * 0.06 + 0.3);
+          });
+        } else if (type === 'miss') {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.exponentialRampToValueAtTime(140, now + 0.12);
+          gain.gain.setValueAtTime(0.14, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.15);
+        } else if (type === 'win') {
+          [523.25, 659.25, 783.99, 1046.50, 1318.51].forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+            gain.gain.setValueAtTime(0.18, now + idx * 0.08);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.4);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + idx * 0.08);
+            osc.stop(now + idx * 0.08 + 0.45);
+          });
+        }
+      } catch (e) {}
+    }
+
+    function toggleSound() {
+      gameState.isSoundEnabled = !gameState.isSoundEnabled;
+      const icon = document.getElementById('sound-icon');
+      icon.className = gameState.isSoundEnabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
+      localStorage.setItem('memory_sound', gameState.isSoundEnabled ? 'on' : 'off');
+    }
+
+    // --- モード & 枚数制御 ---
+    function setMode(mode) {
+      if (gameState.mode === mode) return;
+      gameState.mode = mode;
+      ['solo', 'cpu', 'pvp'].forEach(m => {
+        const btn = document.getElementById(`mode-${m}`);
+        btn.className = (m === mode)
+          ? 'px-2.5 py-1 rounded-lg transition bg-white dark:bg-slate-700 shadow-xs text-indigo-600 dark:text-indigo-400'
+          : 'px-2.5 py-1 rounded-lg transition text-slate-500 dark:text-slate-400';
+      });
+      document.getElementById('cpu-level-container').classList.toggle('hidden', mode !== 'cpu');
+      initGame();
+    }
+
+    function setCardCount(count) {
+      if (gameState.totalCards === count) return;
+      gameState.totalCards = count;
+      [12, 24, 36, 52].forEach(c => {
+        const btn = document.getElementById(`cards-${c}`);
+        if (btn) {
+          btn.className = (c === count)
+            ? 'px-2.5 py-1 rounded-lg transition bg-white dark:bg-slate-700 shadow-xs text-indigo-600 dark:text-indigo-400'
+            : 'px-2.5 py-1 rounded-lg transition text-slate-500 dark:text-slate-400';
+        }
+      });
+      initGame();
+    }
+
+    function onCpuLevelChange() {
+      gameState.cpuDifficulty = document.getElementById('cpu-difficulty').value;
+      initGame();
+    }
+
+    // --- デッキ生成 ---
+    function createDeck(count) {
+      let deck = [];
+      if (count === 12) {
+        for (let r = 1; r <= 6; r++) {
+          deck.push({ rank: r, suit: SUITS[0] });
+          deck.push({ rank: r, suit: SUITS[1] });
+        }
+      } else if (count === 24) {
+        for (let r = 1; r <= 6; r++) {
+          SUITS.forEach(s => deck.push({ rank: r, suit: s }));
+        }
+      } else if (count === 36) {
+        // A〜9の4スート（9 × 4 = 36枚）
+        for (let r = 1; r <= 9; r++) {
+          SUITS.forEach(s => deck.push({ rank: r, suit: s }));
+        }
+      } else {
+        // フルデッキ（13 × 4 = 52枚）
+        for (let r = 1; r <= 13; r++) {
+          SUITS.forEach(s => deck.push({ rank: r, suit: s }));
+        }
+      }
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+      return deck;
+    }
+
+    function initGame() {
+      if (gameState.timerId) {
+        clearInterval(gameState.timerId);
+        gameState.timerId = null;
+      }
+      gameState.cards = createDeck(gameState.totalCards);
+      gameState.flippedIndices = [];
+      gameState.matchedPairs = 0;
+      gameState.moves = 0;
+      gameState.isLocked = false;
+      gameState.timerSec = 0;
+      gameState.turn = 'p1';
+      gameState.scores = { p1: 0, p2: 0 };
+      gameState.cpuMemory = {};
+
+      document.getElementById('stat-time').textContent = '00:00';
+      document.getElementById('stat-moves').textContent = '0';
+      updateBestDisplay();
+      updateDashboard();
+      renderBoard();
+    }
+
+    // --- 本物のトランプピップ配置（♠・♥・♦・♣） ---
+    function generatePipsSvg(rank, suit) {
+      const color = suit.color;
+      const sym = suit.symbol;
+
+      // エース (A) : 中央に特大スートマーク
+      if (rank === 1) {
+        return `
+          <div class="w-full h-full flex items-center justify-center select-none" style="color: ${color}">
+            <span class="text-4xl sm:text-5xl font-serif drop-shadow-xs leading-none">${sym}</span>
+          </div>
+        `;
+      }
+
+      // 絵札 (J, Q, K) : 上下対称肖像風バッジ
+      if (rank >= 11 && rank <= 13) {
+        const title = rank === 11 ? 'JACK' : (rank === 12 ? 'QUEEN' : 'KING');
+        const iconChar = rank === 11 ? '⚔️' : (rank === 12 ? '👑' : '🤴');
+        return `
+          <div class="w-full h-full flex flex-col items-center justify-center p-1">
+            <div class="w-[88%] h-[88%] rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40 flex flex-col items-center justify-between py-1 px-1 relative shadow-inner">
+              <span class="text-xs sm:text-sm">${iconChar}</span>
+              <div class="flex flex-col items-center leading-none" style="color: ${color}">
+                <span class="text-base sm:text-lg">${sym}</span>
+                <span class="text-[9px] sm:text-[10px] font-serif font-black tracking-wide">${title}</span>
+              </div>
+              <span class="text-xs sm:text-sm rotate-180">${iconChar}</span>
+            </div>
+          </div>
+        `;
+      }
+
+      // 数字札 (2〜10) : 正確なトランプ座標でスートを整然配置
+      const positions = {
+        2: [{x: 50, y: 30, r: false}, {x: 50, y: 90, r: true}],
+        3: [{x: 50, y: 28, r: false}, {x: 50, y: 60, r: false}, {x: 50, y: 92, r: true}],
+        4: [
+          {x: 28, y: 30, r: false}, {x: 72, y: 30, r: false},
+          {x: 28, y: 90, r: true}, {x: 72, y: 90, r: true}
+        ],
+        5: [
+          {x: 28, y: 28, r: false}, {x: 72, y: 28, r: false},
+          {x: 50, y: 60, r: false},
+          {x: 28, y: 92, r: true}, {x: 72, y: 92, r: true}
+        ],
+        6: [
+          {x: 28, y: 28, r: false}, {x: 72, y: 28, r: false},
+          {x: 28, y: 60, r: false}, {x: 72, y: 60, r: false},
+          {x: 28, y: 92, r: true}, {x: 72, y: 92, r: true}
+        ],
+        7: [
+          {x: 28, y: 28, r: false}, {x: 72, y: 28, r: false},
+          {x: 50, y: 44, r: false},
+          {x: 28, y: 60, r: false}, {x: 72, y: 60, r: false},
+          {x: 28, y: 92, r: true}, {x: 72, y: 92, r: true}
+        ],
+        8: [
+          {x: 28, y: 28, r: false}, {x: 72, y: 28, r: false},
+          {x: 50, y: 44, r: false},
+          {x: 28, y: 60, r: false}, {x: 72, y: 60, r: false},
+          {x: 50, y: 76, r: true},
+          {x: 28, y: 92, r: true}, {x: 72, y: 92, r: true}
+        ],
+        9: [
+          {x: 28, y: 26, r: false}, {x: 72, y: 26, r: false},
+          {x: 28, y: 48, r: false}, {x: 72, y: 48, r: false},
+          {x: 50, y: 60, r: false},
+          {x: 28, y: 72, r: true}, {x: 72, y: 72, r: true},
+          {x: 28, y: 94, r: true}, {x: 72, y: 94, r: true}
+        ],
+        10: [
+          {x: 28, y: 26, r: false}, {x: 72, y: 26, r: false},
+          {x: 50, y: 38, r: false},
+          {x: 28, y: 48, r: false}, {x: 72, y: 48, r: false},
+          {x: 28, y: 72, r: true}, {x: 72, y: 72, r: true},
+          {x: 50, y: 82, r: true},
+          {x: 28, y: 94, r: true}, {x: 72, y: 94, r: true}
+        ]
+      };
+
+      const pts = positions[rank] || [];
+      const fontSize = (rank >= 8) ? 17 : 20;
+
+      const pipsHtml = pts.map(p => `
+        <text x="${p.x}" y="${p.y}" font-size="${fontSize}" text-anchor="middle" dominant-baseline="central" fill="${color}" ${p.r ? `transform="rotate(180, ${p.x}, ${p.y})"` : ''}>
+          ${sym}
+        </text>
+      `).join('');
+
+      return `
+        <svg viewBox="0 0 100 120" class="w-full h-full">
+          ${pipsHtml}
+        </svg>
+      `;
+    }
+
+    // --- 盤面レンダリング ---
+    function renderBoard() {
+      const grid = document.getElementById('card-grid');
+      grid.innerHTML = '';
+
+      if (gameState.totalCards === 12) {
+        grid.className = 'grid grid-cols-4 gap-2.5 sm:gap-4 mx-auto w-full max-w-md';
+      } else if (gameState.totalCards === 24) {
+        grid.className = 'grid grid-cols-4 sm:grid-cols-6 gap-2 sm:gap-3 mx-auto w-full max-w-xl';
+      } else if (gameState.totalCards === 36) {
+        grid.className = 'grid grid-cols-6 gap-1.5 sm:gap-2.5 mx-auto w-full max-w-2xl';
+      } else {
+        grid.className = 'grid grid-cols-6 sm:grid-cols-8 md:grid-cols-13 gap-1.5 sm:gap-2 mx-auto w-full max-w-3xl';
+      }
+
+      gameState.cards.forEach((card, index) => {
+        const rankStr = RANK_LABELS[card.rank] || card.rank;
+        const color = card.suit.color;
+        const sym = card.suit.symbol;
+
+        const slot = document.createElement('div');
+        slot.className = 'card-wrap aspect-[2.5/3.5] cursor-pointer';
+        slot.id = `card-slot-${index}`;
+
+        const centerSvg = generatePipsSvg(card.rank, card.suit);
+
+        slot.innerHTML = `
+          <div id="card-box-${index}" class="card-box">
+            
+            <!-- カード裏面（Apps Hubのシンボル fa-cube のメダリオン） -->
+            <div class="card-face-back bg-white dark:bg-slate-900 border-2 border-white dark:border-slate-800 p-[3px] shadow-sm">
+              <div class="w-full h-full rounded card-back-pattern border border-white/60 dark:border-indigo-400/50 flex items-center justify-center">
+                <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-slate-900/90 border border-white/30 flex items-center justify-center text-white text-xs shadow-md">
+                  <i class="fa-solid fa-cube text-[13px] text-indigo-300"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- カード表面（白地＋数字＋本物のトランプマーク） -->
+            <div class="card-face-front border border-slate-300 dark:border-slate-700 shadow-sm relative p-1.5 flex flex-col justify-between">
+              
+              <!-- 左上インデックス -->
+              <div class="absolute top-1 left-1.5 flex flex-col items-center leading-none select-none font-serif font-black" style="color: ${color}">
+                <span class="text-xs sm:text-sm font-bold">${rankStr}</span>
+                <span class="text-[11px] sm:text-xs mt-0.5 leading-none">${sym}</span>
+              </div>
+
+              <!-- 中央ピップ絵柄（本物のトランプピップ） -->
+              <div class="w-full h-full flex items-center justify-center pt-2 pb-2 px-1 pointer-events-none select-none">
+                ${centerSvg}
+              </div>
+
+              <!-- 右下インデックス（180度反転） -->
+              <div class="absolute bottom-1 right-1.5 flex flex-col items-center leading-none select-none font-serif font-black rotate-180" style="color: ${color}">
+                <span class="text-xs sm:text-sm font-bold">${rankStr}</span>
+                <span class="text-[11px] sm:text-xs mt-0.5 leading-none">${sym}</span>
+              </div>
+
+            </div>
+
+          </div>
+        `;
+
+        slot.onclick = () => onCardClick(index);
+        grid.appendChild(slot);
+      });
+    }
+
+    // --- カードめくり操作 ---
+    function onCardClick(index) {
+      if (gameState.isLocked) return;
+      if (gameState.flippedIndices.includes(index)) return;
+      
+      const slot = document.getElementById(`card-slot-${index}`);
+      if (slot.classList.contains('pointer-events-none')) return;
+      if (gameState.mode === 'cpu' && gameState.turn === 'p2') return;
+
+      if (!gameState.timerId && gameState.moves === 0 && gameState.flippedIndices.length === 0) {
+        startTimer();
+      }
+
+      flipCard(index);
+    }
+
+    function flipCard(index) {
+      const box = document.getElementById(`card-box-${index}`);
+      box.classList.add('is-flipped');
+      playSound('flip');
+
+      gameState.flippedIndices.push(index);
+
+      // CPU記憶
+      rememberCardForCpu(index, gameState.cards[index]);
+
+      if (gameState.flippedIndices.length === 2) {
+        gameState.isLocked = true;
+        gameState.moves++;
+        updateDashboard();
+
+        const [i1, i2] = gameState.flippedIndices;
+        const c1 = gameState.cards[i1];
+        const c2 = gameState.cards[i2];
+
+        if (c1.rank === c2.rank) {
+          handleMatch(i1, i2);
+        } else {
+          handleMismatch(i1, i2);
+        }
+      }
+    }
+
+    // --- 一致処理 ---
+    function handleMatch(i1, i2) {
+      setTimeout(() => {
+        playSound('match');
+        gameState.matchedPairs++;
+
+        if (gameState.turn === 'p1') {
+          gameState.scores.p1++;
+        } else {
+          gameState.scores.p2++;
+        }
+
+        [i1, i2].forEach(i => {
+          const slot = document.getElementById(`card-slot-${i}`);
+          slot.classList.add('pointer-events-none');
+          const box = document.getElementById(`card-box-${i}`);
+          box.classList.add('opacity-40', 'scale-[0.96]');
+        });
+
+        delete gameState.cpuMemory[i1];
+        delete gameState.cpuMemory[i2];
+
+        gameState.flippedIndices = [];
+        gameState.isLocked = false;
+        updateDashboard();
+
+        if (gameState.matchedPairs >= gameState.totalCards / 2) {
+          handleGameOver();
+        } else {
+          if (gameState.mode === 'cpu' && gameState.turn === 'p2') {
+            setTimeout(cpuPlayTurn, 650);
+          }
+        }
+      }, 450);
+    }
+
+    // --- 不一致処理 ---
+    function handleMismatch(i1, i2) {
+      setTimeout(() => {
+        playSound('miss');
+        const box1 = document.getElementById(`card-box-${i1}`);
+        const box2 = document.getElementById(`card-box-${i2}`);
+        box1.classList.remove('is-flipped');
+        box2.classList.remove('is-flipped');
+
+        gameState.flippedIndices = [];
+        switchTurn();
+        gameState.isLocked = false;
+        updateDashboard();
+
+        if (gameState.mode === 'cpu' && gameState.turn === 'p2') {
+          setTimeout(cpuPlayTurn, 800);
+        }
+      }, 900);
+    }
+
+    function switchTurn() {
+      if (gameState.mode === 'solo') return;
+      gameState.turn = (gameState.turn === 'p1') ? 'p2' : 'p1';
+    }
+
+    // --- CPU AI 思考ルーチン ---
+    function rememberCardForCpu(index, card) {
+      const diff = gameState.cpuDifficulty;
+      let prob = (diff === 'easy') ? 0.35 : (diff === 'hard' ? 1.0 : 0.75);
+      if (Math.random() <= prob) {
+        gameState.cpuMemory[index] = { rank: card.rank };
+      }
+    }
+
+    function cpuPlayTurn() {
+      if (gameState.matchedPairs >= gameState.totalCards / 2) return;
+      gameState.isLocked = true;
+
+      const unrevealed = [];
+      gameState.cards.forEach((_, idx) => {
+        const slot = document.getElementById(`card-slot-${idx}`);
+        if (!slot.classList.contains('pointer-events-none') && !gameState.flippedIndices.includes(idx)) {
+          unrevealed.push(idx);
+        }
+      });
+
+      if (unrevealed.length === 0) return;
+
+      let p1 = null, p2 = null;
+      const mem = Object.keys(gameState.cpuMemory).map(Number).filter(i => unrevealed.includes(i));
+      
+      for (let i = 0; i < mem.length; i++) {
+        for (let j = i + 1; j < mem.length; j++) {
+          if (gameState.cpuMemory[mem[i]].rank === gameState.cpuMemory[mem[j]].rank) {
+            p1 = mem[i];
+            p2 = mem[j];
+            break;
+          }
+        }
+        if (p1 !== null) break;
+      }
+
+      if (p1 === null) {
+        p1 = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+      }
+
+      flipCard(p1);
+
+      setTimeout(() => {
+        const rem = unrevealed.filter(i => i !== p1);
+        const c1 = gameState.cards[p1];
+
+        if (p2 === null) {
+          const match = rem.find(i => gameState.cpuMemory[i] && gameState.cpuMemory[i].rank === c1.rank);
+          p2 = (match !== undefined) ? match : rem[Math.floor(Math.random() * rem.length)];
+        }
+
+        flipCard(p2);
+      }, 650);
+    }
+
+    // --- タイマー ---
+    function startTimer() {
+      gameState.timerId = setInterval(() => {
+        gameState.timerSec++;
+        document.getElementById('stat-time').textContent = formatTime(gameState.timerSec);
+      }, 1000);
+    }
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60).toString().padStart(2, '0');
+      const s = (sec % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    // --- ダッシュボード更新 ---
+    function updateDashboard() {
+      document.getElementById('stat-moves').textContent = gameState.moves;
+      document.getElementById('stat-time').textContent = formatTime(gameState.timerSec);
+
+      const totalPairs = gameState.totalCards / 2;
+      const scoreEl = document.getElementById('score-display');
+      const turnTextEl = document.getElementById('turn-status-text');
+      const turnIconEl = document.getElementById('turn-badge-icon');
+
+      if (gameState.mode === 'solo') {
+        scoreEl.textContent = `${gameState.matchedPairs} / ${totalPairs}`;
+        turnTextEl.textContent = 'プレイ中';
+        turnIconEl.className = 'w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-sm shrink-0';
+        turnIconEl.innerHTML = '<i class="fa-solid fa-user"></i>';
+      } else if (gameState.mode === 'cpu') {
+        scoreEl.innerHTML = `<span class="text-indigo-600 dark:text-indigo-400">${gameState.scores.p1}</span> - <span class="text-rose-500">${gameState.scores.p2}</span>`;
+        if (gameState.turn === 'p1') {
+          turnTextEl.textContent = 'あなたの番';
+          turnIconEl.className = 'w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-sm shrink-0';
+          turnIconEl.innerHTML = '<i class="fa-solid fa-user"></i>';
+        } else {
+          turnTextEl.textContent = 'CPU考案中...';
+          turnIconEl.className = 'w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-500 flex items-center justify-center text-sm shrink-0 animate-pulse';
+          turnIconEl.innerHTML = '<i class="fa-solid fa-robot"></i>';
+        }
+      } else {
+        scoreEl.innerHTML = `<span class="text-indigo-600 dark:text-indigo-400">${gameState.scores.p1}</span> - <span class="text-amber-500">${gameState.scores.p2}</span>`;
+        if (gameState.turn === 'p1') {
+          turnTextEl.textContent = 'プレイヤー 1';
+          turnIconEl.className = 'w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-sm shrink-0';
+          turnIconEl.innerHTML = '<i class="fa-solid fa-1"></i>';
+        } else {
+          turnTextEl.textContent = 'プレイヤー 2';
+          turnIconEl.className = 'w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center text-sm shrink-0';
+          turnIconEl.innerHTML = '<i class="fa-solid fa-2"></i>';
+        }
+      }
+    }
+
+    // --- ゲーム終了 ---
+    function handleGameOver() {
+      if (gameState.timerId) {
+        clearInterval(gameState.timerId);
+        gameState.timerId = null;
+      }
+      playSound('win');
+
+      const modal = document.getElementById('game-modal');
+      const titleEl = document.getElementById('modal-title');
+      const descEl = document.getElementById('modal-desc');
+      const timeEl = document.getElementById('modal-time');
+      const movesEl = document.getElementById('modal-moves');
+      const extraEl = document.getElementById('modal-result-detail');
+      const iconWrap = document.getElementById('modal-icon-wrap');
+
+      timeEl.textContent = formatTime(gameState.timerSec);
+      movesEl.textContent = `${gameState.moves}手`;
+
+      if (gameState.mode === 'solo') {
+        titleEl.textContent = 'クリア！';
+        descEl.textContent = `${gameState.totalCards}枚のカードをすべて揃えました。`;
+        extraEl.textContent = `完走 (${gameState.totalCards}枚)`;
+        iconWrap.innerHTML = '<i class="fa-solid fa-crown"></i>';
+        iconWrap.className = 'w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center text-3xl mx-auto';
+
+        saveBestRecord(gameState.totalCards, gameState.timerSec, gameState.moves);
+        updateBestDisplay();
+      } else if (gameState.mode === 'cpu') {
+        const p1 = gameState.scores.p1;
+        const cpu = gameState.scores.p2;
+        if (p1 > cpu) {
+          titleEl.textContent = 'あなたの勝利！';
+          descEl.textContent = `CPU（${getDifficultyLabel()}）に競り勝ちました！`;
+          extraEl.textContent = `${p1} 対 ${cpu} (WIN)`;
+          iconWrap.innerHTML = '<i class="fa-solid fa-trophy"></i>';
+          iconWrap.className = 'w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-500 flex items-center justify-center text-3xl mx-auto';
+        } else if (p1 < cpu) {
+          titleEl.textContent = 'CPUの勝利';
+          descEl.textContent = 'CPUの記憶力に惜敗しました。リベンジしましょう！';
+          extraEl.textContent = `${p1} 対 ${cpu} (LOSE)`;
+          iconWrap.innerHTML = '<i class="fa-solid fa-robot"></i>';
+          iconWrap.className = 'w-16 h-16 rounded-2xl bg-rose-100 dark:bg-rose-950/60 text-rose-500 flex items-center justify-center text-3xl mx-auto';
+        } else {
+          titleEl.textContent = '引き分け！';
+          descEl.textContent = '完全な互角の勝負でした！';
+          extraEl.textContent = `${p1} 対 ${cpu} (DRAW)`;
+          iconWrap.innerHTML = '<i class="fa-solid fa-handshake"></i>';
+          iconWrap.className = 'w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center text-3xl mx-auto';
+        }
+      } else {
+        const p1 = gameState.scores.p1;
+        const p2 = gameState.scores.p2;
+        titleEl.textContent = (p1 > p2) ? 'プレイヤー1の勝利！' : ((p2 > p1) ? 'プレイヤー2の勝利！' : '引き分け！');
+        descEl.textContent = '白熱した対戦お疲れ様でした！';
+        extraEl.textContent = `${p1} 対 ${p2}`;
+        iconWrap.innerHTML = '<i class="fa-solid fa-champagne-glasses"></i>';
+        iconWrap.className = 'w-16 h-16 rounded-2xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-500 flex items-center justify-center text-3xl mx-auto';
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('game-modal').classList.add('hidden');
+    }
+
+    function getDifficultyLabel() {
+      if (gameState.cpuDifficulty === 'easy') return '初級';
+      if (gameState.cpuDifficulty === 'hard') return '上級';
+      return '中級';
+    }
+
+    function saveBestRecord(cards, time, moves) {
+      const key = `memory_best_${cards}`;
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      let shouldUpdate = false;
+      if (!saved) {
+        shouldUpdate = true;
+      } else if (moves < saved.moves || (moves === saved.moves && time < saved.time)) {
+        shouldUpdate = true;
+      }
+      if (shouldUpdate) {
+        localStorage.setItem(key, JSON.stringify({ time, moves, date: new Date().toLocaleDateString() }));
+      }
+    }
+
+    function updateBestDisplay() {
+      const bestEl = document.getElementById('stat-best');
+      const key = `memory_best_${gameState.totalCards}`;
+      const saved = JSON.parse(localStorage.getItem(key) || 'null');
+      if (saved) {
+        bestEl.textContent = `${saved.moves}手 (${formatTime(saved.time)})`;
+      } else {
+        bestEl.textContent = '--';
+      }
+    }
+
+    // --- テーマ初期化 ---
+    function initTheme() {
+      const isDark = localStorage.getItem('app_theme') === 'dark' || 
+        (!localStorage.getItem('app_theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      applyTheme(isDark);
+
+      const soundSetting = localStorage.getItem('memory_sound');
+      if (soundSetting === 'off') {
+        gameState.isSoundEnabled = false;
+        document.getElementById('sound-icon').className = 'fa-solid fa-volume-xmark';
+      }
+    }
+
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('app_theme', isDark ? 'dark' : 'light');
+      updateThemeIcon(isDark);
+    }
+
+    function applyTheme(isDark) {
+      document.documentElement.classList.toggle('dark', isDark);
+      updateThemeIcon(isDark);
+    }
+
+    function updateThemeIcon(isDark) {
+      const icon = document.getElementById('theme-icon');
+      if (icon) icon.className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+    }
+
+    initTheme();
+    initGame();
+  </script>
+</body>
+</html>
